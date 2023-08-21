@@ -235,7 +235,12 @@ head_default(useq_t* u, propt_t propt) {
   useq_t* cncal = u->canonical;
   char* seq = propt.pe_fastq ? cncal->info : cncal->seq;
 
-  fprintf(OUTPUTF1, "%s%s\t%ld", propt.first, seq, cncal->count);
+  char fastq[M] = {0};
+  sscanf(cncal->info, "%s", fastq);
+
+  fprintf(OUTPUTF1, "%s%s\t%ld\t%s", propt.first, seq, cncal->count, fastq);
+
+  //fprintf(OUTPUTF1, "%s%s\t%ld", propt.first, seq, cncal->count);
 
   if (propt.showclusters) {
     char* seq = propt.pe_fastq ? u->info : u->seq;
@@ -1406,6 +1411,7 @@ read_rawseq(FILE* inputf, gstack_t* uSQ) {
   ssize_t nread;
   size_t nchar = M;
   char copy[MAXBRCDLEN];
+  char info[MAXBRCDLEN]; // !!!
   char* line = malloc(M);
   if (line == NULL) {
     alert();
@@ -1413,6 +1419,7 @@ read_rawseq(FILE* inputf, gstack_t* uSQ) {
   }
 
   char* seq = NULL;
+  char* info_seq = NULL;
   int count = 0;
   int lineno = 0;
 
@@ -1426,11 +1433,13 @@ read_rawseq(FILE* inputf, gstack_t* uSQ) {
     lineno++;
     if (line[nread - 1] == '\n')
       line[nread - 1] = '\0';
-    if (sscanf(line, "%s\t%d", copy, &count) != 2) {
+    //if (sscanf(line, "%s\t%d", copy, &count) != 2) {
+    if (sscanf(line, "%s\t%d\t%[^\n]%*c", copy, &count, info) < 3) { // !!!
       count = 1;
       seq = line;
     } else {
       seq = copy;
+      info_seq = info;
     }
     size_t seqlen = strlen(seq);
     for (size_t i = 0; i < seqlen; i++) {
@@ -1440,7 +1449,7 @@ read_rawseq(FILE* inputf, gstack_t* uSQ) {
         abort();
       }
     }
-    useq_t* new = new_useq(count, seq, NULL);
+    useq_t* new = new_useq(count, seq, info_seq);
     if (new == NULL) {
       alert();
       krash();
